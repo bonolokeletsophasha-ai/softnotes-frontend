@@ -19,20 +19,36 @@ function App() {
   const [notes, setNotes] = useState([]);
 
   const [showNoteForm, setShowNoteForm] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState(null);
 
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Create a new note
-  const handleCreateNote = (e) => {
-    e.preventDefault();
+  // Create or update a note
+const handleCreateNote = (e) => {
+  e.preventDefault();
 
-    if (!noteTitle.trim() || !noteContent.trim()) {
-      return;
-    }
+  if (!noteTitle.trim() || !noteContent.trim()) {
+    return;
+  }
 
+  if (editingNoteId !== null) {
+    // Update existing note
+    setNotes((previousNotes) =>
+      previousNotes.map((note) =>
+        note.id === editingNoteId
+          ? {
+              ...note,
+              title: noteTitle,
+              content: noteContent,
+            }
+          : note
+      )
+    );
+  } else {
+    // Create new note
     const newNote = {
       id: Date.now(),
       title: noteTitle,
@@ -41,11 +57,21 @@ function App() {
     };
 
     setNotes((previousNotes) => [newNote, ...previousNotes]);
+  }
 
-    setNoteTitle("");
-    setNoteContent("");
-    setShowNoteForm(false);
-  };
+  setNoteTitle("");
+  setNoteContent("");
+  setEditingNoteId(null);
+  setShowNoteForm(false);
+};
+
+// Open a note for editing
+const handleEditNote = (note) => {
+  setEditingNoteId(note.id);
+  setNoteTitle(note.title);
+  setNoteContent(note.content);
+  setShowNoteForm(true);
+};
 
   // Delete a note
   const handleDeleteNote = (id) => {
@@ -250,6 +276,32 @@ function App() {
 
                     <div className="mb-4 flex items-start justify-between">
 
+  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#DCEFE2] text-[#3F7657]">
+    <FileText size={20} />
+  </div>
+
+  <div className="flex items-center gap-1">
+
+    <button
+      onClick={() => handleEditNote(note)}
+      className="rounded-lg p-2 text-slate-400 transition hover:bg-[#EAF3EC] hover:text-[#344E41]"
+      title="Edit note"
+    >
+      <Pencil size={18} />
+    </button>
+
+    <button
+      onClick={() => handleDeleteNote(note.id)}
+      className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-500"
+      title="Delete note"
+    >
+      <Trash2 size={18} />
+    </button>
+
+  </div>
+
+</div>
+
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#DCEFE2] text-[#3F7657]">
                         <FileText size={20} />
                       </div>
@@ -279,7 +331,7 @@ function App() {
 
                   </div>
 
-                ))}
+                ))}:
 
               </div>
 
