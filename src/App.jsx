@@ -35,6 +35,7 @@ function App({ user, onLogout }) {
   const [trashNotes, setTrashNotes] = useState([]);
 
   const [activePage, setActivePage] = useState("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -79,11 +80,22 @@ function App({ user, onLogout }) {
     }
   };
 
-  // Load notes when the app opens
   useEffect(() => {
     loadNotes();
     loadTrashNotes();
   }, []);
+
+  // Navigate between pages
+  const navigateTo = (page) => {
+    setActivePage(page);
+    setSearchTerm("");
+    setError("");
+    setMobileMenuOpen(false);
+
+    if (page === "trash") {
+      loadTrashNotes();
+    }
+  };
 
   // Open a new note form
   const handleNewNote = () => {
@@ -94,7 +106,7 @@ function App({ user, onLogout }) {
     setShowNoteForm(true);
   };
 
-  // Close and reset the note form
+  // Close note form
   const handleCloseForm = () => {
     setShowNoteForm(false);
     setEditingNoteId(null);
@@ -129,7 +141,6 @@ function App({ user, onLogout }) {
       }
 
       handleCloseForm();
-
       await loadNotes();
     } catch (err) {
       setError(err.message || "Unable to save your note.");
@@ -138,7 +149,7 @@ function App({ user, onLogout }) {
     }
   };
 
-  // Open an existing note for editing
+  // Edit a note
   const handleEditNote = (note) => {
     setEditingNoteId(note.id);
     setNoteTitle(note.title);
@@ -190,7 +201,7 @@ function App({ user, onLogout }) {
     }
   };
 
-  // Restore a note from Trash
+  // Restore a note
   const handleRestoreNote = async (id) => {
     try {
       setError("");
@@ -255,12 +266,10 @@ function App({ user, onLogout }) {
     });
   };
 
-  // Favourite notes
   const favoriteNotes = notes.filter(
     (note) => note.is_favorite
   );
 
-  // Select notes based on active page
   const pageNotes =
     activePage === "favorites"
       ? favoriteNotes
@@ -268,32 +277,100 @@ function App({ user, onLogout }) {
       ? trashNotes
       : notes;
 
-  // Search notes
   const filteredNotes = pageNotes.filter(
     (note) =>
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Change page
-  const navigateTo = (page) => {
-    setActivePage(page);
-    setSearchTerm("");
-    setError("");
+  // Navigation links shared by desktop and mobile sidebars
+  const navigationLinks = (
+    <nav className="space-y-2">
+      <button
+        onClick={() => navigateTo("dashboard")}
+        className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-medium transition ${
+          activePage === "dashboard"
+            ? "bg-[#DCEFE2] text-[#344E41]"
+            : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
+        }`}
+      >
+        <LayoutDashboard size={19} />
+        Dashboard
+      </button>
 
-    if (page === "trash") {
-      loadTrashNotes();
-    }
-  };
+      <button
+        onClick={() => navigateTo("all")}
+        className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-medium transition ${
+          activePage === "all"
+            ? "bg-[#DCEFE2] text-[#344E41]"
+            : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
+        }`}
+      >
+        <FileText size={19} />
+        All Notes
+      </button>
+
+      <button
+        onClick={() => navigateTo("favorites")}
+        className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left font-medium transition ${
+          activePage === "favorites"
+            ? "bg-[#DCEFE2] text-[#344E41]"
+            : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
+        }`}
+      >
+        <span className="flex items-center gap-3">
+          <Star size={19} />
+          Favourites
+        </span>
+
+        <span className="rounded-full bg-[#EAF3EC] px-2 py-1 text-xs text-[#344E41]">
+          {favoriteNotes.length}
+        </span>
+      </button>
+
+      <button
+        onClick={() => navigateTo("trash")}
+        className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left font-medium transition ${
+          activePage === "trash"
+            ? "bg-[#DCEFE2] text-[#344E41]"
+            : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
+        }`}
+      >
+        <span className="flex items-center gap-3">
+          <Trash2 size={19} />
+          Trash
+        </span>
+
+        <span className="rounded-full bg-[#EAF3EC] px-2 py-1 text-xs text-[#344E41]">
+          {trashNotes.length}
+        </span>
+      </button>
+    </nav>
+  );
+
+  // Sidebar information card
+  const informationCard = (
+    <div className="mt-auto rounded-2xl bg-[#EAF3EC] p-5">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#3F7657]">
+        <Heart size={20} />
+      </div>
+
+      <h3 className="font-semibold text-[#344E41]">
+        Your thoughts matter.
+      </h3>
+
+      <p className="mt-2 text-sm leading-6 text-slate-500">
+        Keep your ideas organised and your personal notes in one safe place.
+      </p>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#F2F4F1] text-[#26332B]">
       <div className="flex min-h-screen">
 
-        {/* Sidebar */}
+        {/* Desktop Sidebar */}
         <aside className="hidden w-64 flex-col border-r border-[#DCE4DD] bg-white px-6 py-8 md:flex">
-
-          {/* Logo */}
           <div className="mb-12 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#344E41] text-xl font-bold text-white">
               S
@@ -310,100 +387,78 @@ function App({ user, onLogout }) {
             </div>
           </div>
 
-          {/* Navigation */}
           <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
             Workspace
           </p>
 
-          <nav className="space-y-2">
+          {navigationLinks}
 
-            <button
-              onClick={() => navigateTo("dashboard")}
-              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-medium transition ${
-                activePage === "dashboard"
-                  ? "bg-[#DCEFE2] text-[#344E41]"
-                  : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
-              }`}
-            >
-              <LayoutDashboard size={19} />
-              Dashboard
-            </button>
-
-            <button
-              onClick={() => navigateTo("all")}
-              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-medium transition ${
-                activePage === "all"
-                  ? "bg-[#DCEFE2] text-[#344E41]"
-                  : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
-              }`}
-            >
-              <FileText size={19} />
-              All Notes
-            </button>
-
-            <button
-              onClick={() => navigateTo("favorites")}
-              className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left font-medium transition ${
-                activePage === "favorites"
-                  ? "bg-[#DCEFE2] text-[#344E41]"
-                  : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Star size={19} />
-                Favourites
-              </span>
-
-              <span className="rounded-full bg-[#EAF3EC] px-2 py-1 text-xs text-[#344E41]">
-                {favoriteNotes.length}
-              </span>
-            </button>
-
-            <button
-              onClick={() => navigateTo("trash")}
-              className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left font-medium transition ${
-                activePage === "trash"
-                  ? "bg-[#DCEFE2] text-[#344E41]"
-                  : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <Trash2 size={19} />
-                Trash
-              </span>
-
-              <span className="rounded-full bg-[#EAF3EC] px-2 py-1 text-xs text-[#344E41]">
-                {trashNotes.length}
-              </span>
-            </button>
-
-          </nav>
-
-          {/* Information Card */}
-          <div className="mt-auto rounded-2xl bg-[#EAF3EC] p-5">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#3F7657]">
-              <Heart size={20} />
-            </div>
-
-            <h3 className="font-semibold text-[#344E41]">
-              Your thoughts matter.
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Keep your ideas organised and your personal notes in one safe
-              place.
-            </p>
-          </div>
+          {informationCard}
         </aside>
 
+        {/* Mobile Sidebar Overlay */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+
+            {/* Dark Background */}
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="absolute inset-0 h-full w-full bg-black/40"
+              aria-label="Close navigation menu"
+            />
+
+            {/* Slide-out Sidebar */}
+            <aside className="relative flex h-full w-72 max-w-[85%] flex-col bg-white px-6 py-8 shadow-2xl animate-in slide-in-from-left duration-200">
+
+              <div className="mb-12 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#344E41] text-xl font-bold text-white">
+                    S
+                  </div>
+
+                  <div>
+                    <h1 className="text-xl font-bold text-[#26332B]">
+                      SoftNotes
+                    </h1>
+
+                    <p className="text-xs text-slate-400">
+                      Your space, your thoughts.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-lg p-2 text-slate-500 hover:bg-[#EAF3EC]"
+                  aria-label="Close menu"
+                >
+                  <X size={22} />
+                </button>
+              </div>
+
+              <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Workspace
+              </p>
+
+              {navigationLinks}
+
+              {informationCard}
+            </aside>
+          </div>
+        )}
+
         {/* Main Content */}
-        <main className="flex-1 px-5 py-6 md:px-10 md:py-9">
+        <main className="min-w-0 flex-1 px-5 py-6 md:px-10 md:py-9">
 
           {/* Header */}
           <header className="mb-10 flex items-center justify-between">
             <div className="flex items-center gap-3">
 
-              <button className="rounded-lg p-2 text-[#344E41] hover:bg-[#DCEFE2] md:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="rounded-lg p-2 text-[#344E41] transition hover:bg-[#DCEFE2] md:hidden"
+                aria-label="Open navigation menu"
+              >
                 <Menu size={23} />
               </button>
 
@@ -424,7 +479,7 @@ function App({ user, onLogout }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
 
               <button className="rounded-xl border border-[#DCE4DD] bg-white p-3 text-[#344E41] transition hover:bg-[#EAF3EC]">
                 <Sun size={19} />
@@ -454,7 +509,7 @@ function App({ user, onLogout }) {
             </div>
           </header>
 
-          {/* Welcome Banner */}
+          {/* Dashboard Banner */}
           {activePage === "dashboard" && (
             <section className="mb-9 overflow-hidden rounded-3xl bg-gradient-to-r from-[#263C32] via-[#344E41] to-[#6B9678] p-7 text-white md:p-10">
               <div className="max-w-xl">
@@ -482,7 +537,7 @@ function App({ user, onLogout }) {
             </section>
           )}
 
-          {/* Trash Information Banner */}
+          {/* Trash Information */}
           {activePage === "trash" && (
             <section className="mb-8 rounded-2xl border border-[#DCE4DD] bg-white p-5 md:p-6">
               <div className="flex items-start gap-4">
@@ -497,7 +552,7 @@ function App({ user, onLogout }) {
 
                   <p className="mt-1 text-sm leading-6 text-slate-500">
                     Notes in the Trash can be restored whenever you need them.
-                    If you permanently delete a note, it cannot be recovered.
+                    Permanently deleted notes cannot be recovered.
                   </p>
                 </div>
               </div>
@@ -521,9 +576,7 @@ function App({ user, onLogout }) {
 
           {/* Notes Section */}
           <section>
-
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-
               <div>
                 <h3 className="text-xl font-bold text-[#26332B]">
                   {activePage === "favorites"
@@ -540,7 +593,9 @@ function App({ user, onLogout }) {
                       }`
                     : activePage === "trash"
                     ? `${trashNotes.length} ${
-                        trashNotes.length === 1 ? "deleted note" : "deleted notes"
+                        trashNotes.length === 1
+                          ? "deleted note"
+                          : "deleted notes"
                       }`
                     : `${notes.length} ${
                         notes.length === 1 ? "note" : "notes"
@@ -562,7 +617,7 @@ function App({ user, onLogout }) {
               </div>
             </div>
 
-            {/* Loading State */}
+            {/* Loading */}
             {(activePage === "trash" ? loadingTrash : loadingNotes) ? (
               <div className="flex min-h-72 items-center justify-center rounded-3xl bg-white">
                 <div className="text-center">
@@ -575,23 +630,18 @@ function App({ user, onLogout }) {
               </div>
             ) : filteredNotes.length > 0 ? (
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-
                 {filteredNotes.map((note) => (
                   <div
                     key={note.id}
                     className="group flex min-h-56 flex-col rounded-2xl border border-[#DCE4DD] bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg"
                   >
-
                     <div className="mb-4 flex items-start justify-between">
-
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#DCEFE2] text-[#3F7657]">
                         <FileText size={20} />
                       </div>
 
-                      {/* Active Note Actions */}
                       {activePage !== "trash" ? (
                         <div className="flex items-center gap-1">
-
                           <button
                             onClick={() => handleToggleFavorite(note)}
                             title={
@@ -630,12 +680,9 @@ function App({ user, onLogout }) {
                           >
                             <Trash2 size={18} />
                           </button>
-
                         </div>
                       ) : (
-                        /* Trash Note Actions */
                         <div className="flex items-center gap-1">
-
                           <button
                             onClick={() => handleRestoreNote(note.id)}
                             className="rounded-lg p-2 text-[#3F7657] transition hover:bg-[#EAF3EC]"
@@ -651,7 +698,6 @@ function App({ user, onLogout }) {
                           >
                             <Trash2 size={18} />
                           </button>
-
                         </div>
                       )}
                     </div>
@@ -675,14 +721,11 @@ function App({ user, onLogout }) {
                         In Trash
                       </div>
                     )}
-
                   </div>
                 ))}
-
               </div>
             ) : (
               <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[#C8DFCE] bg-white px-6 py-12 text-center">
-
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#DCEFE2] text-[#3F7657]">
                   {activePage === "favorites" ? (
                     <Star size={30} />
@@ -724,10 +767,8 @@ function App({ user, onLogout }) {
                       Create your first note
                     </button>
                   )}
-
               </div>
             )}
-
           </section>
         </main>
       </div>
@@ -736,8 +777,6 @@ function App({ user, onLogout }) {
       {showNoteForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
           <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl md:p-8">
-
-            {/* Modal Header */}
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-[#344E41]">
@@ -758,9 +797,7 @@ function App({ user, onLogout }) {
               </button>
             </div>
 
-            {/* Note Form */}
             <form onSubmit={handleCreateNote}>
-
               <div className="mb-5">
                 <label
                   htmlFor="noteTitle"
@@ -799,9 +836,7 @@ function App({ user, onLogout }) {
                 />
               </div>
 
-              {/* Form Buttons */}
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-
                 <button
                   type="button"
                   onClick={handleCloseForm}
@@ -821,7 +856,6 @@ function App({ user, onLogout }) {
                     ? "Save Changes"
                     : "Save Note"}
                 </button>
-
               </div>
             </form>
           </div>
