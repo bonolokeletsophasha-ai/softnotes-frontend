@@ -14,6 +14,7 @@ import {
   Clock,
   Pencil,
   LogOut,
+  Heart,
 } from "lucide-react";
 
 import {
@@ -21,12 +22,15 @@ import {
   createNote,
   updateNote,
   deleteNote,
+  toggleFavorite,
 } from "./services/notesService.js";
 
 import { logoutUser } from "./services/authService.js";
 
 function App({ user, onLogout }) {
   const [notes, setNotes] = useState([]);
+
+  const [activePage, setActivePage] = useState("dashboard");
 
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -122,6 +126,26 @@ function App({ user, onLogout }) {
     setShowNoteForm(true);
   };
 
+  // Toggle favourite status
+  const handleToggleFavorite = async (note) => {
+    try {
+      setError("");
+
+      const updatedNote = await toggleFavorite(
+        note.id,
+        !note.is_favorite
+      );
+
+      setNotes((previousNotes) =>
+        previousNotes.map((item) =>
+          item.id === note.id ? updatedNote : item
+        )
+      );
+    } catch (err) {
+      setError(err.message || "Unable to update favourite status.");
+    }
+  };
+
   // Delete a note
   const handleDeleteNote = async (id) => {
     const confirmDelete = window.confirm(
@@ -170,8 +194,17 @@ function App({ user, onLogout }) {
     });
   };
 
+  // Favourite notes
+  const favoriteNotes = notes.filter(
+    (note) => note.is_favorite
+  );
+
+  // Select notes based on the active page
+  const pageNotes =
+    activePage === "favorites" ? favoriteNotes : notes;
+
   // Search notes
-  const filteredNotes = notes.filter(
+  const filteredNotes = pageNotes.filter(
     (note) =>
       note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       note.content.toLowerCase().includes(searchTerm.toLowerCase())
@@ -207,31 +240,79 @@ function App({ user, onLogout }) {
           </p>
 
           <nav className="space-y-2">
-            <button className="flex w-full items-center gap-3 rounded-xl bg-[#DCEFE2] px-4 py-3 text-left font-medium text-[#344E41]">
+
+            <button
+              onClick={() => {
+                setActivePage("dashboard");
+                setSearchTerm("");
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-medium transition ${
+                activePage === "dashboard"
+                  ? "bg-[#DCEFE2] text-[#344E41]"
+                  : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
+              }`}
+            >
               <LayoutDashboard size={19} />
               Dashboard
             </button>
 
-            <button className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-slate-500 transition hover:bg-[#EAF3EC] hover:text-[#3F7657]">
+            <button
+              onClick={() => {
+                setActivePage("all");
+                setSearchTerm("");
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-medium transition ${
+                activePage === "all"
+                  ? "bg-[#DCEFE2] text-[#344E41]"
+                  : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
+              }`}
+            >
               <FileText size={19} />
               All Notes
             </button>
 
-            <button className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-slate-500 transition hover:bg-[#EAF3EC] hover:text-[#3F7657]">
-              <Star size={19} />
-              Favourites
+            <button
+              onClick={() => {
+                setActivePage("favorites");
+                setSearchTerm("");
+              }}
+              className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left font-medium transition ${
+                activePage === "favorites"
+                  ? "bg-[#DCEFE2] text-[#344E41]"
+                  : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
+              }`}
+            >
+              <span className="flex items-center gap-3">
+                <Star size={19} />
+                Favourites
+              </span>
+
+              <span className="rounded-full bg-[#EAF3EC] px-2 py-1 text-xs text-[#344E41]">
+                {favoriteNotes.length}
+              </span>
             </button>
 
-            <button className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-slate-500 transition hover:bg-[#EAF3EC] hover:text-[#3F7657]">
+            <button
+              onClick={() => {
+                setActivePage("trash");
+                setSearchTerm("");
+              }}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-medium transition ${
+                activePage === "trash"
+                  ? "bg-[#DCEFE2] text-[#344E41]"
+                  : "text-slate-500 hover:bg-[#EAF3EC] hover:text-[#3F7657]"
+              }`}
+            >
               <Trash2 size={19} />
               Trash
             </button>
+
           </nav>
 
           {/* Information Card */}
           <div className="mt-auto rounded-2xl bg-[#EAF3EC] p-5">
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[#3F7657]">
-              <Moon size={20} />
+              <Heart size={20} />
             </div>
 
             <h3 className="font-semibold text-[#344E41]">
@@ -251,6 +332,7 @@ function App({ user, onLogout }) {
           {/* Header */}
           <header className="mb-10 flex items-center justify-between">
             <div className="flex items-center gap-3">
+
               <button className="rounded-lg p-2 text-[#344E41] hover:bg-[#DCEFE2] md:hidden">
                 <Menu size={23} />
               </button>
@@ -261,7 +343,13 @@ function App({ user, onLogout }) {
                 </p>
 
                 <h2 className="text-2xl font-bold text-[#26332B] md:text-3xl">
-                  Your Dashboard
+                  {activePage === "favorites"
+                    ? "Your Favourites"
+                    : activePage === "all"
+                    ? "All Notes"
+                    : activePage === "trash"
+                    ? "Trash"
+                    : "Your Dashboard"}
                 </h2>
               </div>
             </div>
@@ -296,31 +384,33 @@ function App({ user, onLogout }) {
             </div>
           </header>
 
-          {/* Welcome Banner */}
-          <section className="mb-9 overflow-hidden rounded-3xl bg-gradient-to-r from-[#263C32] via-[#344E41] to-[#6B9678] p-7 text-white md:p-10">
-            <div className="max-w-xl">
-              <p className="mb-3 text-sm font-medium text-[#DCEFE2]">
-                YOUR PERSONAL SPACE
-              </p>
+          {/* Welcome Banner - Dashboard only */}
+          {activePage === "dashboard" && (
+            <section className="mb-9 overflow-hidden rounded-3xl bg-gradient-to-r from-[#263C32] via-[#344E41] to-[#6B9678] p-7 text-white md:p-10">
+              <div className="max-w-xl">
+                <p className="mb-3 text-sm font-medium text-[#DCEFE2]">
+                  YOUR PERSONAL SPACE
+                </p>
 
-              <h2 className="text-3xl font-bold leading-tight md:text-4xl">
-                A little space for all your thoughts.
-              </h2>
+                <h2 className="text-3xl font-bold leading-tight md:text-4xl">
+                  A little space for all your thoughts.
+                </h2>
 
-              <p className="mt-4 max-w-md text-sm leading-7 text-[#EAF3EC] md:text-base">
-                Capture your ideas, organise your plans, and keep everything
-                important in one place.
-              </p>
+                <p className="mt-4 max-w-md text-sm leading-7 text-[#EAF3EC] md:text-base">
+                  Capture your ideas, organise your plans, and keep everything
+                  important in one place.
+                </p>
 
-              <button
-                onClick={handleNewNote}
-                className="mt-7 flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-[#344E41] transition hover:bg-[#EAF3EC]"
-              >
-                <Plus size={19} />
-                Create a note
-              </button>
-            </div>
-          </section>
+                <button
+                  onClick={handleNewNote}
+                  className="mt-7 flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-[#344E41] transition hover:bg-[#EAF3EC]"
+                >
+                  <Plus size={19} />
+                  Create a note
+                </button>
+              </div>
+            </section>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -339,15 +429,26 @@ function App({ user, onLogout }) {
 
           {/* Notes Section */}
           <section>
+
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+
               <div>
                 <h3 className="text-xl font-bold text-[#26332B]">
-                  Your Notes
+                  {activePage === "favorites"
+                    ? "Saved Favourites"
+                    : activePage === "trash"
+                    ? "Deleted Notes"
+                    : "Your Notes"}
                 </h3>
 
                 <p className="mt-1 text-sm text-slate-400">
-                  {notes.length} {notes.length === 1 ? "note" : "notes"} in your
-                  workspace
+                  {activePage === "favorites"
+                    ? `${favoriteNotes.length} favourite ${
+                        favoriteNotes.length === 1 ? "note" : "notes"
+                      }`
+                    : `${notes.length} ${
+                        notes.length === 1 ? "note" : "notes"
+                      } in your workspace`}
                 </p>
               </div>
 
@@ -376,20 +477,59 @@ function App({ user, onLogout }) {
                   </p>
                 </div>
               </div>
+            ) : activePage === "trash" ? (
+              <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[#C8DFCE] bg-white px-6 py-12 text-center">
+                <Trash2 size={35} className="mb-4 text-[#3F7657]" />
+
+                <h3 className="text-lg font-semibold text-[#344E41]">
+                  Trash is coming soon.
+                </h3>
+
+                <p className="mt-2 text-sm text-slate-400">
+                  We'll add deleted-note recovery in a later step.
+                </p>
+              </div>
             ) : filteredNotes.length > 0 ? (
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+
                 {filteredNotes.map((note) => (
                   <div
                     key={note.id}
                     className="group flex min-h-56 flex-col rounded-2xl border border-[#DCE4DD] bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg"
                   >
+
                     <div className="mb-4 flex items-start justify-between">
+
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#DCEFE2] text-[#3F7657]">
                         <FileText size={20} />
                       </div>
 
                       {/* Note Actions */}
                       <div className="flex items-center gap-1">
+
+                        <button
+                          onClick={() => handleToggleFavorite(note)}
+                          title={
+                            note.is_favorite
+                              ? "Remove from favourites"
+                              : "Add to favourites"
+                          }
+                          className={`rounded-lg p-2 transition ${
+                            note.is_favorite
+                              ? "bg-[#DCEFE2] text-[#344E41]"
+                              : "text-slate-400 hover:bg-[#EAF3EC] hover:text-[#344E41]"
+                          }`}
+                        >
+                          <Star
+                            size={18}
+                            fill={
+                              note.is_favorite
+                                ? "currentColor"
+                                : "none"
+                            }
+                          />
+                        </button>
+
                         <button
                           onClick={() => handleEditNote(note)}
                           className="rounded-lg p-2 text-slate-400 transition hover:bg-[#EAF3EC] hover:text-[#344E41]"
@@ -405,6 +545,7 @@ function App({ user, onLogout }) {
                         >
                           <Trash2 size={18} />
                         </button>
+
                       </div>
                     </div>
 
@@ -420,28 +561,39 @@ function App({ user, onLogout }) {
                       <Clock size={14} />
                       {formatDate(note.updated_at || note.created_at)}
                     </div>
+
                   </div>
                 ))}
+
               </div>
             ) : (
               <div className="flex min-h-72 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[#C8DFCE] bg-white px-6 py-12 text-center">
+
                 <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#DCEFE2] text-[#3F7657]">
-                  <FileText size={30} />
+                  {activePage === "favorites" ? (
+                    <Star size={30} />
+                  ) : (
+                    <FileText size={30} />
+                  )}
                 </div>
 
                 <h3 className="text-lg font-semibold text-[#344E41]">
                   {searchTerm
                     ? "No matching notes found."
+                    : activePage === "favorites"
+                    ? "No favourites yet."
                     : "Your space is waiting."}
                 </h3>
 
                 <p className="mt-2 max-w-sm text-sm leading-6 text-slate-400">
                   {searchTerm
                     ? "Try searching with a different word or phrase."
+                    : activePage === "favorites"
+                    ? "Click the star on any note to save it here."
                     : "You haven't created any notes yet. Start writing down your thoughts, ideas, and reminders."}
                 </p>
 
-                {!searchTerm && (
+                {activePage !== "favorites" && !searchTerm && (
                   <button
                     onClick={handleNewNote}
                     className="mt-6 flex items-center gap-2 rounded-xl bg-[#344E41] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#263C32]"
@@ -450,8 +602,10 @@ function App({ user, onLogout }) {
                     Create your first note
                   </button>
                 )}
+
               </div>
             )}
+
           </section>
         </main>
       </div>
@@ -484,6 +638,7 @@ function App({ user, onLogout }) {
 
             {/* Note Form */}
             <form onSubmit={handleCreateNote}>
+
               <div className="mb-5">
                 <label
                   htmlFor="noteTitle"
@@ -524,6 +679,7 @@ function App({ user, onLogout }) {
 
               {/* Form Buttons */}
               <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
                 <button
                   type="button"
                   onClick={handleCloseForm}
@@ -543,6 +699,7 @@ function App({ user, onLogout }) {
                     ? "Save Changes"
                     : "Save Note"}
                 </button>
+
               </div>
             </form>
           </div>
