@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   LayoutDashboard,
@@ -13,9 +13,19 @@ import {
   X,
   Clock,
   Pencil,
+  LogOut,
 } from "lucide-react";
 
-function App() {
+import {
+  getNotes,
+  createNote,
+  updateNote,
+  deleteNote,
+} from "./services/notesService.js";
+
+import { logoutUser } from "./services/authService.js";
+
+function App({ user, onLogout }) {
   const [notes, setNotes] = useState([]);
 
   const [showNoteForm, setShowNoteForm] = useState(false);
@@ -26,11 +36,36 @@ function App() {
 
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [loadingNotes, setLoadingNotes] = useState(true);
+  const [savingNote, setSavingNote] = useState(false);
+  const [error, setError] = useState("");
+
+  // Load notes from the backend
+  const loadNotes = async () => {
+    try {
+      setLoadingNotes(true);
+      setError("");
+
+      const savedNotes = await getNotes();
+
+      setNotes(savedNotes || []);
+    } catch (err) {
+      setError(err.message || "Unable to load your notes.");
+    } finally {
+      setLoadingNotes(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotes();
+  }, []);
+
   // Open a new note form
   const handleNewNote = () => {
     setEditingNoteId(null);
     setNoteTitle("");
     setNoteContent("");
+    setError("");
     setShowNoteForm(true);
   };
 
@@ -43,39 +78,39 @@ function App() {
   };
 
   // Create or update a note
-  const handleCreateNote = (e) => {
+  const handleCreateNote = async (e) => {
     e.preventDefault();
 
     if (!noteTitle.trim() || !noteContent.trim()) {
+      setError("Please enter both a title and note content.");
       return;
     }
 
-    if (editingNoteId !== null) {
-      // Update an existing note
-      setNotes((previousNotes) =>
-        previousNotes.map((note) =>
-          note.id === editingNoteId
-            ? {
-                ...note,
-                title: noteTitle.trim(),
-                content: noteContent.trim(),
-              }
-            : note
-        )
-      );
-    } else {
-      // Create a new note
-      const newNote = {
-        id: Date.now(),
-        title: noteTitle.trim(),
-        content: noteContent.trim(),
-        createdAt: new Date().toLocaleDateString(),
-      };
+    try {
+      setSavingNote(true);
+      setError("");
 
-      setNotes((previousNotes) => [newNote, ...previousNotes]);
+      if (editingNoteId) {
+        await updateNote(
+          editingNoteId,
+          noteTitle.trim(),
+          noteContent.trim()
+        );
+      } else {
+        await createNote(
+          noteTitle.trim(),
+          noteContent.trim()
+        );
+      }
+
+      handleCloseForm();
+
+      await loadNotes();
+    } catch (err) {
+      setError(err.message || "Unable to save your note.");
+    } finally {
+      setSavingNote(false);
     }
-
-    handleCloseForm();
   };
 
   // Open an existing note for editing
@@ -83,20 +118,56 @@ function App() {
     setEditingNoteId(note.id);
     setNoteTitle(note.title);
     setNoteContent(note.content);
+    setError("");
     setShowNoteForm(true);
   };
 
   // Delete a note
-  const handleDeleteNote = (id) => {
+  const handleDeleteNote = async (id) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this note?"
     );
 
-    if (confirmDelete) {
+    if (!confirmDelete) return;
+
+    try {
+      setError("");
+
+      await deleteNote(id);
+
       setNotes((previousNotes) =>
         previousNotes.filter((note) => note.id !== id)
       );
+    } catch (err) {
+      setError(err.message || "Unable to delete this note.");
     }
+  };
+
+  // Log out
+  const handleLogout = async () => {
+    const confirmLogout = window.confirm(
+      "Are you sure you want to log out?"
+    );
+
+    if (!confirmLogout) return;
+
+    try {
+      await logoutUser();
+      onLogout();
+    } catch (err) {
+      setError(err.message || "Unable to log out.");
+    }
+  };
+
+  // Format note date
+  const formatDate = (date) => {
+    if (!date) return "Recently updated";
+
+    return new Date(date).toLocaleDateString("en-ZA", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   // Search notes
@@ -196,13 +267,32 @@ function App() {
             </div>
 
             <div className="flex items-center gap-3">
+
               <button className="rounded-xl border border-[#DCE4DD] bg-white p-3 text-[#344E41] transition hover:bg-[#EAF3EC]">
                 <Sun size={19} />
               </button>
 
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#C8DFCE] font-semibold text-[#344E41]">
-                U
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-semibold text-[#344E41]">
+                  {user?.email?.split("@")[0] || "Workspace User"}
+                </p>
+
+                <p className="text-xs text-slate-400">
+                  Personal Workspace
+                </p>
               </div>
+
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#C8DFCE] font-semibold text-[#344E41]">
+                {user?.email?.charAt(0).toUpperCase() || "U"}
+              </div>
+
+              <button
+                onClick={handleLogout}
+                title="Log out"
+                className="rounded-xl border border-[#DCE4DD] bg-white p-3 text-slate-500 transition hover:bg-red-50 hover:text-red-500"
+              >
+                <LogOut size={19} />
+              </button>
             </div>
           </header>
 
@@ -232,6 +322,21 @@ function App() {
             </div>
           </section>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-600">
+              <span>{error}</span>
+
+              <button
+                onClick={() => setError("")}
+                className="ml-4"
+                aria-label="Dismiss error"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          )}
+
           {/* Notes Section */}
           <section>
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -260,8 +365,18 @@ function App() {
               </div>
             </div>
 
-            {/* Display Notes */}
-            {filteredNotes.length > 0 ? (
+            {/* Loading State */}
+            {loadingNotes ? (
+              <div className="flex min-h-72 items-center justify-center rounded-3xl bg-white">
+                <div className="text-center">
+                  <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-[#DCEFE2] border-t-[#344E41]" />
+
+                  <p className="text-sm text-slate-500">
+                    Loading your notes...
+                  </p>
+                </div>
+              </div>
+            ) : filteredNotes.length > 0 ? (
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredNotes.map((note) => (
                   <div
@@ -303,7 +418,7 @@ function App() {
 
                     <div className="flex items-center gap-2 border-t border-[#EAF3EC] pt-4 text-xs text-slate-400">
                       <Clock size={14} />
-                      {note.createdAt}
+                      {formatDate(note.updated_at || note.created_at)}
                     </div>
                   </div>
                 ))}
@@ -350,7 +465,7 @@ function App() {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-[#344E41]">
-                  {editingNoteId !== null ? "Edit Note" : "Create a Note"}
+                  {editingNoteId ? "Edit Note" : "Create a Note"}
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-400">
@@ -419,15 +534,14 @@ function App() {
 
                 <button
                   type="submit"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#344E41] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#263C32]"
+                  disabled={savingNote}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-[#344E41] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#263C32] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {editingNoteId !== null ? (
-                    <Pencil size={18} />
-                  ) : (
-                    <Plus size={18} />
-                  )}
-
-                  {editingNoteId !== null ? "Save Changes" : "Save Note"}
+                  {savingNote
+                    ? "Saving..."
+                    : editingNoteId
+                    ? "Save Changes"
+                    : "Save Note"}
                 </button>
               </div>
             </form>

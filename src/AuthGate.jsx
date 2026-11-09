@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import AuthPage from "./components/AuthPage.jsx";
 import App from "./App.jsx";
 
@@ -9,11 +10,20 @@ function AuthGate() {
     setUser(authenticatedUser);
   };
 
+  const handleLogout = () => {
+    setUser(null);
+  };
+
   if (!user) {
     return <AuthPage onAuthenticated={handleAuthenticated} />;
   }
 
-  return <App />;
+  return (
+    <App
+      user={user}
+      onLogout={handleLogout}
+    />
+  );
 }
 
 export default AuthGate;
