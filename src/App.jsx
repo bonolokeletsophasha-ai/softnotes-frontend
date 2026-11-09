@@ -8,6 +8,7 @@ import {
   Search,
   Plus,
   Sun,
+  Moon,
   Menu,
   X,
   Clock,
@@ -31,6 +32,9 @@ import {
 import { logoutUser } from "./services/authService.js";
 
 function App({ user, onLogout }) {
+  const [isDark, setIsDark] = useState(
+  () => localStorage.getItem("softnotes-theme") === "dark"
+);
   const [notes, setNotes] = useState([]);
   const [trashNotes, setTrashNotes] = useState([]);
 
@@ -50,6 +54,14 @@ function App({ user, onLogout }) {
   const [savingNote, setSavingNote] = useState(false);
 
   const [error, setError] = useState("");
+
+  useEffect(() => {
+  if (isDark) {
+    localStorage.setItem("softnotes-theme", "dark");
+  } else {
+    localStorage.setItem("softnotes-theme", "light");
+  }
+}, [isDark]);
 
   // Load active notes
   const loadNotes = async () => {
@@ -366,7 +378,11 @@ function App({ user, onLogout }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F2F4F1] text-[#26332B]">
+    <div
+  className={`min-h-screen bg-[#F2F4F1] text-[#26332B] ${
+    isDark ? "softnotes-dark" : ""
+  }`}
+>
       <div className="flex min-h-screen">
 
         {/* Desktop Sidebar */}
@@ -481,9 +497,14 @@ function App({ user, onLogout }) {
 
             <div className="flex items-center gap-2 sm:gap-3">
 
-              <button className="rounded-xl border border-[#DCE4DD] bg-white p-3 text-[#344E41] transition hover:bg-[#EAF3EC]">
-                <Sun size={19} />
-              </button>
+             <button
+                onClick={() => setIsDark((previous) => !previous)}
+                title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                className="rounded-xl border border-[#DCE4DD] bg-white p-3 text-[#344E41] transition hover:bg-[#EAF3EC]"
+             >
+                {isDark ? <Sun size={19} /> : <Moon size={19} />}
+             </button>
 
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-semibold text-[#344E41]">
